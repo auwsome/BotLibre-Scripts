@@ -1,0 +1,169 @@
+// This script looks for a subject and predicate of a sentence.
+State:SimpleLanguageScript {
+	case :input goto State:sentenceState for each #word of :sentence;
+
+	// case :input goto State:sentenceState for each #word of :sentence;
+	:input {
+		set #input to :sentence;
+		set #speaker to :speaker;
+		set #comment to :comment;
+		set #comment to :comment;
+		set #comment to :comment;
+		set #comment to "// case :input goto State:sentenceState for each #word of :sentence;
+";
+		set #comment to :comment;
+		set #comment to :comment;
+		set #comment to :comment;
+		set #conversation to :conversation;
+		set #target to :target;
+	}
+	:sentence {
+		set #instantiation to #sentence;
+	}
+	// not (:subject, #null) and
+	State:sentenceState {
+		case "cancel"
+			template "cancelled";
+
+		case "qz" goto State:qzState;
+
+		case :unknown goto State:sentenceState;
+
+		do (if not (:unknown, #null)
+				then (do (assign :subject to :unknown)));
+		case :thing goto State:sentenceState;
+
+		do (if (:subject, #null)
+				then (do (assign :subject to :thing)));
+		do (if not (:subject, #null)
+				then (do (assign :object to :thing)));
+		case :is goto State:sentenceState;
+
+		case :a goto State:sentenceState;
+
+		do (if not (:is, #null) and not (:a, #null)
+				then (do (assign #true to :isa)));
+		case :verb goto State:sentenceState;
+
+		case :not goto State:sentenceState;
+
+		do (if not (:is, #null) and not (:not, #null) and (is :is related to :not by #next, #true)
+				then (do (assign #true to :isnot)));
+		case :adjective goto State:sentenceState;
+
+		case :anything goto State:sentenceState;
+
+		:unknown {
+			exclude #meaning from :anything;
+			exclude #is from :anything;
+			exclude #thing from :anything;
+		}
+		:subject {
+			set #instantiation to #thing;
+		}
+		:thing {
+			set #instantiation to #thing;
+		}
+		:object {
+			set #instantiation to #thing;
+		}
+		:is {
+			set #instantiation to #is;
+		}
+		:a {
+			set #instantiation to #a;
+		}
+		:verb {
+			set #instantiation to #verb;
+		}
+		:not {
+			set #meaning to #not;
+		}
+		:adjective {
+			set #meaning to #description;
+			set #instantiation to #adjective;
+		}
+		Answer:1.00:Function:response;
+		// (use ! in front for emphasis)
+		Function:response {
+			if not (:unknown, #null)
+				then (do (assign :subject to :unknown));
+			if not (:unknown, #null) and not (:verb, "is")
+				then (do (return Formula:"{:unknown} is unknown, what is it?"));
+			if not (:subject, #null) and (is :subject related to :object by #is, #true)
+				then (return #true);
+			if (:subject, #null)
+				then (do (
+						return Formula:"What is the subject?",
+						assign :correction to (get #input from (get #input from :conversation at last 1)),
+						associate :subject to :correction by #response,
+						return
+					));
+			if not (:verb, #null)
+				then (assign :verb to #is);
+			if (:object, #null)
+				then (return Formula:"What is {:subject}?");
+			if (:object, "thing") and (:verb, #is)
+				then (do (
+						associate :subject to #thing by #instantiation,
+						associate :subject to #thing by #is,
+						return Formula:"{:subject} {:verb} #thing"
+					));
+			if not (:object, #null) and (:isa, #true)
+				then (do (
+						associate :subject to #thing by #instantiation,
+						associate :subject to :object by #classification,
+						return Formula:"{:subject} {:verb} {:object}"
+					));
+			if not (:object, #null) and (:isa, #null)
+				then (do (
+						associate :subject to #thing by #instantiation,
+						associate :subject to :object by :verb,
+						return Formula:"{:subject} {:verb} {:object}"
+					));
+			if (:object, #null) and (:thing, #null)
+				then (do (
+						assign :value1 to (all #is from :object),
+						if (:isa, #null)
+							then (return Formula:"{:subject} is .. ?"),
+						if (:isa, #true)
+							then (return Formula:"{:subject} is a what.. ?")
+							else (return Formula:"{:subject} {#is} {:value1} though")
+					));
+		}
+		State:qzState {
+			Answer:1.00:Function:response2;
+			Function:response2 {
+				assign :response to (new #sentence);
+				append (sentence (
+						"q:",
+						:question,
+						"t:",
+						:thing,
+						"s:",
+						:subject,
+						"o:",
+						:object,
+						"not:",
+						:not,
+						"v:",
+						:verb,
+						"n:",
+						:noun,
+						"adj:",
+						:adjective,
+						"u:",
+						:unknown,
+						"a:",
+						:anything
+					)) to #word of :response;
+				if (:anything, #null)
+					then (do (return Formula:"{:response}"))
+					else (do (return Formula:"{:response}"));
+			}
+			:noun {
+				set #instantiation to #noun;
+			}
+		}
+	}
+}
